@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruleta de Experiencias</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #0f172a, #1e293b, #334155);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #ui-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            z-index: 10;
+            padding: 0 1rem;
+        }
+
+        h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 800;
+            background: linear-gradient(to right, #fbbf24, #f59e0b, #d97706);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            color: #cbd5e1;
+            margin-top: 0.5rem;
+        }
+
+        #wheel-container {
+            position: relative;
+            width: 90vw;
+            max-width: 500px;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            filter: drop-shadow(0 20px 30px rgba(0,0,0,0.5));
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            /* Borde externo para la ruleta */
+            box-shadow: 0 0 0 10px rgba(255, 255, 255, 0.1),
+                        inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* Puntero SVG */
+        #pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 60px;
+            z-index: 20;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+            transition: transform 0.1s;
+            transform-origin: top center;
+        }
+
+        #controls-container {
+            margin-top: 3rem;
+            z-index: 10;
+        }
+
+        #spin-button {
+            background: linear-gradient(45deg, #ec4899, #8b5cf6);
+            color: white;
+            border: none;
+            padding: 1rem 3rem;
+            font-size: 1.5rem;
+            font-weight: 800;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), inset 0 -3px 0 rgba(0,0,0,0.2);
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #spin-button:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.4), inset 0 -3px 0 rgba(0,0,0,0.2);
+        }
+
+        #spin-button:active {
+            transform: translateY(2px) scale(0.95);
+        }
+
+        #spin-button:disabled {
+            background: #475569;
+            color: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #result-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        #result-modal.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            padding: 3rem 2rem;
+            text-align: center;
+            transform: scale(0.8) translateY(50px);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-width: 90%;
+            width: 450px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        }
+
+        #result-modal.show .modal-content {
+            transform: scale(1) translateY(0);
+        }
+
+        #result-emoji {
+            font-size: 5rem;
+            margin-bottom: 1rem;
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            animation-delay: 0.2s;
+            opacity: 0;
+            transform: scale(0);
+        }
+
+        #result-text {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 2rem;
+            line-height: 1.3;
+        }
+
+        #close-modal {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 2px solid rgba(255,255,255,0.2);
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #close-modal:hover {
+            background: white;
+            color: #0f172a;
+        }
+
+        @keyframes popIn {
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        /* Partículas de confeti */
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            z-index: 100;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-header">
+        <h1>Ruleta de Experiencias</h1>
+        <p class="subtitle">Gira la ruleta y descubre tu próximo tema</p>
+    </div>
+
+    <div id="wheel-container">
+        <!-- Puntero superior -->
+        <svg id="pointer" viewBox="0 0 50 60" xmlns="http://www.w3.org/2000/svg">
+            <path d="M25 60 L0 10 Q 0 0 10 0 L40 0 Q 50 0 50 10 Z" fill="#ef4444" stroke="#ffffff" stroke-width="3"/>
+            <circle cx="25" cy="15" r="5" fill="#ffffff" opacity="0.5"/>
+        </svg>
+        
+        <!-- Canvas donde se dibujará la ruleta -->
+        <canvas id="wheel"></canvas>
+    </div>
+
+    <div id="controls-container">
+        <button id="spin-button">¡GIRAR AHORA!</button>
+    </div>
+
+    <div id="result-modal">
+        <div class="modal-content">
+            <div id="result-emoji">🌟</div>
+            <div id="result-text">Tu experiencia va aquí</div>
+            <button id="close-modal">Continuar</button>
+        </div>
+    </div>
+
+    <script>
+        const experiences = [
+            { text: "Un logro\nreciente", emoji: "🏆", color: "#FF5722" }, // Naranja
+            { text: "Algo por\nagradecer", emoji: "🙏", color: "#9C27B0" }, // Morado
+            { text: "Un hobby", emoji: "🎨", color: "#03A9F4" },         // Azul claro
+            { text: "Un\naprendizaje", emoji: "💡", color: "#4CAF50" },   // Verde
+            { text: "Una meta", emoji: "🎯", color: "#FFC107", textColor: "#333" }, // Amarillo
+            { text: "Algo que te\nhace sonreír", emoji: "😊", color: "#E91E63" }, // Rosa
+            { text: "Comida\nfavorita", emoji: "🍕", color: "#00BCD4" }    // Cian
+        ];
+
+        const canvas = document.getElementById('wheel');
+        const ctx = canvas.getContext('2d');
+        const spinButton = document.getElementById('spin-button');
+        const pointer = document.getElementById('pointer');
+
+        let currentAngle = 0;
+        let isSpinning = false;
+        let animationFrame;
+        
+        // Variables de física de la ruleta
+        let spinVelocity = 0;
+        const friction = 0.99; // Fricción para desacelerar suavemente
+        let targetAngle = 0;
+        let spinTimeTotal = 0;
+        let spinTimeCurrent = 0;
+        let startAngle = 0;
+
+        function initWheel() {
+            // Ajustar tamaño del canvas para alta resolución (Retina displays)
+            const size = Math.min(window.innerWidth * 0.9, 500);
+            const dpr = window.devicePixelRatio || 1;
+            
+            canvas.width = size * dpr;
+            canvas.height = size * dpr;
+            
+            ctx.scale(dpr, dpr);
+            
+            // Forzar el tamaño en CSS
+            canvas.style.width = `${size}px`;
+            canvas.style.height = `${size}px`;
+
+            drawWheel();
+        }
+
+        function drawWheel() {
+            const centerX = canvas.width / (2 * (window.devicePixelRatio || 1));
+            const centerY = canvas.height / (2 * (window.devicePixelRatio || 1));
+            const radius = centerX - 10; // Margen interior
+            
+            ctx.clearRect(0, 0, centerX * 2, centerY * 2);
+            
+            const numSegments = experiences.length;
+            const arcSize = (2 * Math.PI) / numSegments;
+
+            // Dibujar cada segmento
+            for (let i = 0; i < numSegments; i++) {
+                const angle = currentAngle + i * arcSize;
+                
+                // Dibujar Porción
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, angle, angle + arcSize, false);
+                ctx.lineTo(centerX, centerY);
+                ctx.fillStyle = experiences[i].color;
+                ctx.fill();
+                
+                // Borde de la porción
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+                ctx.stroke();
+
+                // Dibujar Texto y Emojis
+                ctx.save();
+                // Mover al centro
+                ctx.translate(centerX, centerY);
+                // Rotar hacia el medio del segmento
+                ctx.rotate(angle + arcSize / 2);
+                
+                // Configuraciones de texto
+                ctx.textAlign = "right";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = experiences[i].textColor || "#ffffff";
+                
+                // Dibujar Emoji (cerca del borde)
+                ctx.font = `bold ${radius * 0.18}px Poppins, sans-serif`;
+                ctx.fillText(experiences[i].emoji, radius - 15, 0);
+
+                // Dibujar Texto (con saltos de línea si es necesario)
+                ctx.font = `600 ${radius * 0.08}px Poppins, sans-serif`;
+                const lines = experiences[i].text.split('\n');
+                
+                // Ajustar posición horizontal del texto dependiendo si tiene 1 o 2 líneas
+                const textX = radius - (radius * 0.35); 
+                
+                if (lines.length === 1) {
+                    ctx.fillText(lines[0], textX, 0);
+                } else {
+                    ctx.fillText(lines[0], textX, -radius * 0.04);
+                    ctx.fillText(lines[1], textX, radius * 0.04);
+                }
+
+                ctx.restore();
+            }
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 0.15, 0, 2 * Math.PI, false);
+            ctx.fillStyle = "#1e293b";
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = "#ffffff";
+            ctx.stroke();
+            
+            // Círculo dorado interior
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 0.05, 0, 2 * Math.PI, false);
+            ctx.fillStyle = "#fbbf24";
+            ctx.fill();
+            
+            // Pequeña decoración alrededor del borde (Clavijas virtuales)
+            for (let i = 0; i < numSegments; i++) {
+                const angle = currentAngle + i * arcSize;
+                ctx.beginPath();
+                ctx.arc(centerX + Math.cos(angle) * (radius - 5), centerY + Math.sin(angle) * (radius - 5), 4, 0, 2 * Math.PI);
+                ctx.fillStyle = "#ffffff";
+                ctx.fill();
+                ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                ctx.shadowBlur = 4;
+            }
+            ctx.shadowColor = 'transparent'; // reset shadow
+        }
+
+        function easeOutQuart(t, b, c, d) {
+            t /= d;
+            t--;
+            return -c * (t * t * t * t - 1) + b;
+        }
+
+        function animateWheel() {
+            spinTimeCurrent += 16; // Aprox 60fps
+            
+            if (spinTimeCurrent >= spinTimeTotal) {
+                // El giro ha terminado
+                currentAngle = targetAngle;
+                drawWheel();
+                isSpinning = false;
+                spinButton.disabled = false;
+                pointer.style.transform = "translateX(-50%) rotate(0deg)"; // Resetear puntero
+                showResult();
+                return;
+            }
+
+            // Calcular nuevo ángulo con easing
+            currentAngle = easeOutQuart(spinTimeCurrent, startAngle, targetAngle - startAngle, spinTimeTotal);
+            
+            drawWheel();
+            
+            // Animación del puntero (salto al chocar con las líneas divisorias)
+            const numSegments = experiences.length;
+            const arcSize = (2 * Math.PI) / numSegments;
+            
+            // Encontrar el ángulo normalizado (0 a 2PI)
+            const normalizedAngle = currentAngle % (2 * Math.PI);
+            
+            // Calcular en qué posición está el inicio de un segmento con respecto al top (puntero)
+            // El puntero está en la parte superior (-PI/2 o 270 grados).
+            // Comprobamos la distancia de cada división al puntero.
+            const pointerAngle = (3 * Math.PI) / 2; // Arriba
+            
+            let pointerHit = false;
+            for(let i=0; i < numSegments; i++) {
+                let segAngle = (normalizedAngle + i * arcSize) % (2 * Math.PI);
+                if (segAngle < 0) segAngle += 2 * Math.PI;
+                
+                // Si la línea divisoria está muy cerca del puntero
+                if (Math.abs(segAngle - pointerAngle) < 0.1 || Math.abs(segAngle - pointerAngle + 2*Math.PI) < 0.1) {
+                    pointerHit = true;
+                    break;
+                }
+            }
+
+            if (pointerHit) {
+                pointer.style.transform = "translateX(-50%) rotate(-15deg)";
+            } else {
+                pointer.style.transform = "translateX(-50%) rotate(0deg)";
+            }
+
+            animationFrame = requestAnimationFrame(animateWheel);
+        }
+
+        function spinWheel() {
+            if (isSpinning) return;
+            
+            isSpinning = true;
+            spinButton.disabled = true;
+
+            // Reiniciar tiempos y ángulos
+            startAngle = currentAngle;
+            spinTimeCurrent = 0;
+            
+            // Duración aleatoria entre 4 y 6 segundos
+            spinTimeTotal = Math.random() * 2000 + 4000;
+            
+            // Vueltas aleatorias (entre 5 y 10 vueltas completas) + un ángulo aleatorio extra
+            const totalRotation = (Math.random() * 5 + 5) * 2 * Math.PI + Math.random() * 2 * Math.PI;
+            targetAngle = currentAngle + totalRotation;
+
+            animateWheel();
+        }
+
+        function showResult() {
+            // Normalizar ángulo actual
+            let finalAngle = currentAngle % (2 * Math.PI);
+            if (finalAngle < 0) finalAngle += 2 * Math.PI;
+
+            // El puntero está en la parte superior, que en Canvas es -PI/2 o 3PI/2 (270 grados)
+            // Cuando la ruleta está en ángulo 0, el segmento 0 va de 0 a arcSize.
+            // Para saber qué segmento está en el ángulo 3PI/2, hacemos la cuenta atrás.
+            const numSegments = experiences.length;
+            const arcSize = (2 * Math.PI) / numSegments;
+            
+            // Restamos el ángulo de la ruleta a la posición del puntero para ver "dónde" cayó
+            let pointerAngle = (3 * Math.PI / 2) - finalAngle;
+            // Normalizamos para que quede entre 0 y 2PI
+            pointerAngle = pointerAngle % (2 * Math.PI);
+            if (pointerAngle < 0) pointerAngle += 2 * Math.PI;
+
+            // Encontramos el índice dividiendo el ángulo apuntado por el tamaño del segmento
+            const winningIndex = Math.floor(pointerAngle / arcSize);
+            const winner = experiences[winningIndex];
+
+            // Mostrar el Modal
+            const modal = document.getElementById('result-modal');
+            document.getElementById('result-emoji').textContent = winner.emoji;
+            // Restaurar saltos de línea para el HTML reemplazando \n con <br> o espacio
+            document.getElementById('result-text').innerHTML = winner.text.replace('\n', ' ');
+            
+            // Ajustar colores del modal
+            const modalContent = modal.querySelector('.modal-content');
+            modalContent.style.borderTop = `6px solid ${winner.color}`;
+
+            modal.classList.add('show');
+            
+            fireConfetti(winner.color);
+        }
+
+        function fireConfetti(accentColor) {
+            const colors = [accentColor, '#ffffff', '#fbbf24'];
+            for (let i = 0; i < 80; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                document.body.appendChild(confetti);
+
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.backgroundColor = color;
+                
+                // Si es redondo o cuadrado
+                if(Math.random() > 0.5) confetti.style.borderRadius = '50%';
+                
+                // Posición inicial centro de la pantalla
+                confetti.style.left = '50%';
+                confetti.style.top = '50%';
+                
+                // Trayectoria aleatoria de explosión
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = 5 + Math.random() * 15;
+                const vx = Math.cos(angle) * velocity;
+                let vy = Math.sin(angle) * velocity - 10; // impulso inicial hacia arriba
+
+                let x = window.innerWidth / 2;
+                let y = window.innerHeight / 2;
+                let opacity = 1;
+                let rot = Math.random() * 360;
+                let rotSpeed = (Math.random() - 0.5) * 20;
+
+                const animateConfetti = () => {
+                    x += vx;
+                    vy += 0.3; // Gravedad
+                    y += vy;
+                    rot += rotSpeed;
+                    opacity -= 0.015;
+
+                    confetti.style.transform = `translate(${x - window.innerWidth/2}px, ${y - window.innerHeight/2}px) rotate(${rot}deg)`;
+                    confetti.style.opacity = opacity;
+
+                    if (opacity > 0 && y < window.innerHeight) {
+                        requestAnimationFrame(animateConfetti);
+                    } else {
+                        confetti.remove();
+                    }
+                };
+
+                requestAnimationFrame(animateConfetti);
+            }
+        }
+
+        document.getElementById('spin-button').addEventListener('click', spinWheel);
+        
+        document.getElementById('close-modal').addEventListener('click', () => {
+            document.getElementById('result-modal').classList.remove('show');
+        });
+
+        window.addEventListener('resize', initWheel);
+        window.addEventListener('load', initWheel);
+
+    </script>
+</body>
+</html>
